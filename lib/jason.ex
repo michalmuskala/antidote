@@ -12,8 +12,10 @@ defmodule Jason do
   @typedoc "Available encoding options."
   @type encode_opt :: {:escape, escape} | {:maps, maps} | {:pretty, boolean | Formatter.opts()}
 
+  @typedoc "The type of the value returned by the custom decoder function."
+  @type map_key :: term
   @typedoc "Decoding setting for map keys."
-  @type keys :: :atoms | :atoms! | :strings | :copy | (String.t() -> term)
+  @type keys :: :atoms | :atoms! | :strings | :copy | (String.t() -> map_key)
   @typedoc "Decoding setting for strings."
   @type strings :: :reference | :copy
   @typedoc "Available decoding options."
@@ -22,7 +24,7 @@ defmodule Jason do
   @typedoc "A plain JSON value where map keys can only be strings."
   @type value :: nil | String.t() | number | boolean | [value] | %{String.t() => value}
   @typedoc "A decoded JSON value where map keys can have any type."
-  @type decoded :: [decoded] | %{term => decoded} | value
+  @type decoded :: [decoded] | %{map_key => decoded} | value
 
   @doc """
   Parses a JSON value from `input` iodata.
@@ -34,7 +36,7 @@ defmodule Jason do
       * `:strings` (default) - decodes keys as binary strings,
       * `:atoms` - keys are converted to atoms using `String.to_atom/1`,
       * `:atoms!` - keys are converted to atoms using `String.to_existing_atom/1`,
-      * custom decoder - additionally a function accepting a string and returning a key
+      * `fn s -> s end` - additionally a custom decoder function accepting a string and returning a key
         is accepted.
 
     * `:strings` - controls how strings (including keys) are decoded. Possible values are:
