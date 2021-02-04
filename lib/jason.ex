@@ -15,7 +15,7 @@ defmodule Jason do
   @typedoc "The type of the value returned by the custom decoder function."
   @type map_key :: term
   @typedoc "Decoding setting for map keys."
-  @type keys :: :atoms | :atoms! | :strings | :copy | (String.t() -> map_key)
+  @type keys :: :atoms | :atoms! | :strings | :copy | (key :: String.t() -> map_key)
   @typedoc "Decoding setting for strings."
   @type strings :: :reference | :copy
   @typedoc "Available decoding options."
@@ -25,8 +25,10 @@ defmodule Jason do
   @type value :: nil | String.t() | number | boolean | [value] | %{String.t() => value}
   @typedoc "A decoded JSON value where map keys can have any type."
   @type decoded :: [decoded] | %{map_key => decoded} | value
-  @typedoc "The types that may be encoded. Only tuples are not included."
-  @type encodable :: decoded | atom
+  @typedoc "The map key types that can be encoded."
+  @type encodable_key :: String.t() | number | atom | [encodable_key]
+  @typedoc "The types that can be encoded. Not included are: `tuple`s, `function`s, `reference`s, `port`s and `pid`s."
+  @type encodable :: String.t() | number | atom | [encodable] | %{encodable_key => encodable}
 
   @doc """
   Parses a JSON value from `input` iodata.
