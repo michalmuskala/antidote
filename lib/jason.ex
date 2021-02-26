@@ -21,11 +21,15 @@ defmodule Jason do
   @typedoc "Available decoding options."
   @type decode_opt :: {:keys, keys} | {:strings, strings}
 
-  @typedoc "A plain JSON value where map keys can only be strings."
-  @type value :: nil | String.t() | number | boolean | [value] | %{String.t() => value}
+  @typedoc "A plain JSON object where keys can only be strings."
+  @type object :: %{String.t() => value}
+  @typedoc "A plain JSON array."
+  @type array :: [value]
+  @typedoc "A plain JSON value."
+  @type value :: nil | String.t() | number | boolean | array | object
   @typedoc "A decoded JSON value where map keys can have any type."
   @type decoded :: [decoded] | %{map_key => decoded} | value
-  @typedoc "The map key types that can be encoded."
+  @typedoc "The type of map keys that can be encoded."
   @type encodable_key :: String.t() | number | atom | [encodable_key]
   @typedoc "The types that can be encoded. Not included are: `tuple`s, `function`s, `reference`s, `port`s and `pid`s."
   @type encodable :: String.t() | number | atom | [encodable] | %{encodable_key => encodable}
