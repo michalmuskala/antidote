@@ -110,6 +110,18 @@ defmodule Jason.DecodeTest do
     assert parse!(~s({"FOO": "bar"}), keys: &String.downcase/1) == %{"foo" => "bar"}
   end
 
+  test "parsing floats to decimals" do
+    assert parse!("0.1", floats: :decimals) == Decimal.new("0.1")
+    assert parse!("-0.1", floats: :decimals) == Decimal.new("-0.1")
+    assert parse!("1.0e0", floats: :decimals) == Decimal.new("1.0e0")
+    assert parse!("1.0e+0", floats: :decimals) == Decimal.new("1.0e+0")
+    assert parse!("0.1e1", floats: :decimals) == Decimal.new("0.1e1")
+    assert parse!("0.1e-1", floats: :decimals) == Decimal.new("0.1e-1")
+
+    assert parse!("123456789.123456789e123", floats: :decimals) ==
+             Decimal.new("123456789.123456789e123")
+  end
+
   test "arrays" do
     assert_fail_with "[", "unexpected end of input at position 1"
     assert_fail_with "[,", "unexpected byte at position 1: 0x2C (',')"

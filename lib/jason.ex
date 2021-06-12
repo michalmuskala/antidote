@@ -14,7 +14,9 @@ defmodule Jason do
 
   @type strings :: :reference | :copy
 
-  @type decode_opt :: {:keys, keys} | {:strings, strings}
+  @type floats :: :native | :decimals
+
+  @type decode_opt :: {:keys, keys} | {:strings, strings} | {:floats, floats}
 
   @doc """
   Parses a JSON value from `input` iodata.
@@ -35,6 +37,11 @@ defmodule Jason do
       * `:copy` - always copies the strings. This option is especially useful when parts of the
         decoded data will be stored for a long time (in ets or some process) to avoid keeping
         the reference to the original data.
+
+    * `:floats` - controls how floats are decoded. Possible values are:
+
+      * `:native` (default) - Native conversion from binary to float using `:erlang.binary_to_float/1`,
+      * `:decimals` - uses `Decimal.new/1` to parse the binary into a Decimal struct with arbitrary precision.
 
   ## Decoding keys to atoms
 
@@ -223,6 +230,6 @@ defmodule Jason do
   end
 
   defp format_decode_opts(opts) do
-    Enum.into(opts, %{keys: :strings, strings: :reference})
+    Enum.into(opts, %{keys: :strings, strings: :reference, floats: :native})
   end
 end
