@@ -5,34 +5,39 @@ defmodule Jason do
 
   alias Jason.{Encode, Decoder, DecodeError, EncodeError, Formatter}
 
-  @typedoc "Encoding setting for string escapes."
-  @type escape :: :json | :unicode_safe | :html_safe | :javascript_safe
-  @typedoc "Encoding setting for maps."
-  @type maps :: :naive | :strict
-  @typedoc "Available encoding options."
-  @type encode_opt :: {:escape, escape} | {:maps, maps} | {:pretty, boolean | Formatter.opts()}
+  @typedoc "A plain JSON string."
+  @type str :: String.t()
+  @typedoc "A plain JSON object where keys can only be strings."
+  @type object :: %{optional(str) => value}
+  @typedoc "A plain JSON array with JSON element values."
+  @type array :: [value]
+  @typedoc "A plain JSON value. Meaningful for specs where it's certain that nothing else is contained."
+  @type value :: nil | str | number | boolean | array | object
+
+  @typedoc "Encoder setting for string escapes."
+  @type enc_escape :: :json | :unicode_safe | :html_safe | :javascript_safe
+  @typedoc "Encoder setting for maps."
+  @type enc_maps :: :naive | :strict
+  @typedoc "Available encoder options."
+  @type encode_opt ::
+          {:escape, enc_escape} | {:maps, enc_maps} | {:pretty, boolean | Formatter.opts()}
 
   @typedoc "The type of the value returned by the custom decoder function."
-  @type map_key :: term
-  @typedoc "Decoding setting for map keys."
-  @type keys :: :atoms | :atoms! | :strings | :copy | (key :: String.t() -> map_key)
-  @typedoc "Decoding setting for strings."
-  @type strings :: :reference | :copy
-  @typedoc "Available decoding options."
-  @type decode_opt :: {:keys, keys} | {:strings, strings}
+  @type dec_map_key :: term
+  @typedoc "Decoder setting for map keys."
+  @type dec_keys :: :atoms | :atoms! | :strings | :copy | (key :: str -> dec_map_key)
+  @typedoc "Decoder setting for strings."
+  @type dec_strings :: :reference | :copy
+  @typedoc "Available decoder options."
+  @type decode_opt :: {:keys, dec_keys} | {:strings, dec_strings}
 
-  @typedoc "A plain JSON object where keys can only be strings."
-  @type object :: %{String.t() => value}
-  @typedoc "A plain JSON array."
-  @type array :: [value]
-  @typedoc "A plain JSON value."
-  @type value :: nil | String.t() | number | boolean | array | object
   @typedoc "A decoded JSON value where map keys can have any type."
-  @type decoded :: [decoded] | %{map_key => decoded} | value
-  @typedoc "The type of map keys that can be encoded."
-  @type encodable_key :: String.t() | number | atom | [encodable_key]
-  @typedoc "The types that can be encoded. Not included are: `tuple`s, `function`s, `reference`s, `port`s and `pid`s."
-  @type encodable :: String.t() | number | atom | [encodable] | %{encodable_key => encodable}
+  @type decoded :: value | [decoded] | %{optional(dec_map_key) => decoded}
+  @typedoc """
+  The types that can be encoded. In general it will be a JSON `t:value` but
+  it can be any `term` that has the `c:Jason.Encoder` protocol implemented.
+  """
+  @type encodable :: value | term
 
   @doc """
   Parses a JSON value from `input` iodata.
@@ -138,7 +143,7 @@ defmodule Jason do
 
   """
   @spec encode(encodable, [encode_opt]) ::
-          {:ok, String.t()} | {:error, EncodeError.t() | Exception.t()}
+          {:ok, str} | {:error, EncodeError.t() | Exception.t()}
   def encode(input, opts \\ []) do
     case do_encode(input, format_encode_opts(opts)) do
       {:ok, result} -> {:ok, IO.iodata_to_binary(result)}
@@ -161,7 +166,7 @@ defmodule Jason do
       ** (Jason.EncodeError) invalid byte 0xFF in <<255>>
 
   """
-  @spec encode!(encodable, [encode_opt]) :: String.t() | no_return
+  @spec encode!(encodable, [encode_opt]) :: str | no_return
   def encode!(input, opts \\ []) do
     case do_encode(input, format_encode_opts(opts)) do
       {:ok, result} -> IO.iodata_to_binary(result)
@@ -236,10 +241,12 @@ defmodule Jason do
     Encode.encode(input, opts)
   end
 
+  @spec format_encode_opts([encode_opt]) :: %{atom => any}
   defp format_encode_opts(opts) do
     Enum.into(opts, %{escape: :json, maps: :naive})
   end
 
+  @spec format_decode_opts([encode_opt]) :: %{atom => any}
   defp format_decode_opts(opts) do
     Enum.into(opts, %{keys: :strings, strings: :reference})
   end
