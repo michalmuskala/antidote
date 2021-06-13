@@ -5,16 +5,39 @@ defmodule Jason do
 
   alias Jason.{Encode, Decoder, DecodeError, EncodeError, Formatter}
 
-  @type escape :: :json | :unicode_safe | :html_safe | :javascript_safe
-  @type maps :: :naive | :strict
+  @typedoc "A plain JSON string."
+  @type str :: String.t()
+  @typedoc "A plain JSON object where keys can only be strings."
+  @type object :: %{optional(str) => value}
+  @typedoc "A plain JSON array with JSON element values."
+  @type array :: [value]
+  @typedoc "A plain JSON value. Meaningful for specs where it's certain that nothing else is contained."
+  @type value :: nil | str | number | boolean | array | object
 
-  @type encode_opt :: {:escape, escape} | {:maps, maps} | {:pretty, boolean | Formatter.opts()}
+  @typedoc "Encoder setting for string escapes."
+  @type enc_escape :: :json | :unicode_safe | :html_safe | :javascript_safe
+  @typedoc "Encoder setting for maps."
+  @type enc_maps :: :naive | :strict
+  @typedoc "Available encoder options."
+  @type encode_opt ::
+          {:escape, enc_escape} | {:maps, enc_maps} | {:pretty, boolean | Formatter.opts()}
 
-  @type keys :: :atoms | :atoms! | :strings | :copy | (String.t() -> term)
+  @typedoc "The type of the value returned by the custom decoder function."
+  @type dec_map_key :: term
+  @typedoc "Decoder setting for map keys."
+  @type dec_keys :: :atoms | :atoms! | :strings | :copy | (key :: str -> dec_map_key)
+  @typedoc "Decoder setting for strings."
+  @type dec_strings :: :reference | :copy
+  @typedoc "Available decoder options."
+  @type decode_opt :: {:keys, dec_keys} | {:strings, dec_strings}
 
-  @type strings :: :reference | :copy
-
-  @type decode_opt :: {:keys, keys} | {:strings, strings}
+  @typedoc "A decoded JSON value where map keys can have any type."
+  @type decoded :: value | [decoded] | %{optional(dec_map_key) => decoded}
+  @typedoc """
+  The types that can be encoded. In general it will be a JSON `t:value` but
+  it can be any `term` that has the `c:Jason.Encoder` protocol implemented.
+  """
+  @type encodable :: value | term
 
   @doc """
   Parses a JSON value from `input` iodata.
@@ -26,7 +49,7 @@ defmodule Jason do
       * `:strings` (default) - decodes keys as binary strings,
       * `:atoms` - keys are converted to atoms using `String.to_atom/1`,
       * `:atoms!` - keys are converted to atoms using `String.to_existing_atom/1`,
-      * custom decoder - additionally a function accepting a string and returning a key
+      * `fn s -> s end` - additionally a custom decoder function accepting a string and returning a key
         is accepted.
 
     * `:strings` - controls how strings (including keys) are decoded. Possible values are:
@@ -50,7 +73,7 @@ defmodule Jason do
       iex> Jason.decode("invalid")
       {:error, %Jason.DecodeError{data: "invalid", position: 0, token: nil}}
   """
-  @spec decode(iodata, [decode_opt]) :: {:ok, term} | {:error, DecodeError.t()}
+  @spec decode(iodata, [decode_opt]) :: {:ok, decoded} | {:error, DecodeError.t()}
   def decode(input, opts \\ []) do
     input = IO.iodata_to_binary(input)
     Decoder.parse(input, format_decode_opts(opts))
@@ -71,7 +94,7 @@ defmodule Jason do
       ** (Jason.DecodeError) unexpected byte at position 0: 0x69 ('i')
 
   """
-  @spec decode!(iodata, [decode_opt]) :: term | no_return
+  @spec decode!(iodata, [decode_opt]) :: decoded | no_return
   def decode!(input, opts \\ []) do
     case decode(input, opts) do
       {:ok, result} -> result
@@ -119,8 +142,8 @@ defmodule Jason do
       {:error, %Jason.EncodeError{message: "invalid byte 0xFF in <<255>>"}}
 
   """
-  @spec encode(term, [encode_opt]) ::
-          {:ok, String.t()} | {:error, EncodeError.t() | Exception.t()}
+  @spec encode(encodable, [encode_opt]) ::
+          {:ok, str} | {:error, EncodeError.t() | Exception.t()}
   def encode(input, opts \\ []) do
     case do_encode(input, format_encode_opts(opts)) do
       {:ok, result} -> {:ok, IO.iodata_to_binary(result)}
@@ -143,7 +166,7 @@ defmodule Jason do
       ** (Jason.EncodeError) invalid byte 0xFF in <<255>>
 
   """
-  @spec encode!(term, [encode_opt]) :: String.t() | no_return
+  @spec encode!(encodable, [encode_opt]) :: str | no_return
   def encode!(input, opts \\ []) do
     case do_encode(input, format_encode_opts(opts)) do
       {:ok, result} -> IO.iodata_to_binary(result)
@@ -170,7 +193,7 @@ defmodule Jason do
       {:error, %Jason.EncodeError{message: "invalid byte 0xFF in <<255>>"}}
 
   """
-  @spec encode_to_iodata(term, [encode_opt]) ::
+  @spec encode_to_iodata(encodable, [encode_opt]) ::
           {:ok, iodata} | {:error, EncodeError.t() | Exception.t()}
   def encode_to_iodata(input, opts \\ []) do
     do_encode(input, format_encode_opts(opts))
@@ -192,7 +215,7 @@ defmodule Jason do
       ** (Jason.EncodeError) invalid byte 0xFF in <<255>>
 
   """
-  @spec encode_to_iodata!(term, [encode_opt]) :: iodata | no_return
+  @spec encode_to_iodata!(encodable, [encode_opt]) :: iodata | no_return
   def encode_to_iodata!(input, opts \\ []) do
     case do_encode(input, format_encode_opts(opts)) do
       {:ok, result} -> result
@@ -218,10 +241,12 @@ defmodule Jason do
     Encode.encode(input, opts)
   end
 
+  @spec format_encode_opts([encode_opt]) :: %{atom => any}
   defp format_encode_opts(opts) do
     Enum.into(opts, %{escape: :json, maps: :naive})
   end
 
+  @spec format_decode_opts([encode_opt]) :: %{atom => any}
   defp format_decode_opts(opts) do
     Enum.into(opts, %{keys: :strings, strings: :reference})
   end
